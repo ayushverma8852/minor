@@ -1,5 +1,5 @@
 import React from 'react';
-import { NavLink, Link } from 'react-router-dom';
+import { NavLink, Link, useNavigate } from 'react-router-dom';
 import {
   GraduationCap,
   LayoutDashboard,
@@ -10,13 +10,16 @@ import {
   User,
   Settings,
   TrendingUp,
-  X
+  X,
+  LogOut,
+  Sparkles
 } from 'lucide-react';
+import { useAuth } from '../../context/AuthContext';
 
 const navItems = [
   { name: 'Dashboard', path: '/', icon: LayoutDashboard },
   { name: 'Start Interview', path: '/start-interview', icon: Play },
-  { name: 'My Attempts', path: '/attempts', icon: BarChart2 },
+  { name: 'Interview History', path: '/history', icon: BarChart2 },
   { name: 'Performance', path: '/performance', icon: Trophy },
   { name: 'Study Resources', path: '/resources', icon: BookOpen },
   { name: 'Profile', path: '/profile', icon: User },
@@ -24,6 +27,15 @@ const navItems = [
 ];
 
 export default function Sidebar({ isOpen, onClose }) {
+  const navigate = useNavigate();
+  const { logout, user } = useAuth();
+
+  const handleLogout = () => {
+    logout();
+    navigate('/login');
+    if (onClose) onClose();
+  };
+
   return (
     <>
       {/* Mobile backdrop */}
@@ -100,15 +112,16 @@ export default function Sidebar({ isOpen, onClose }) {
           </nav>
         </div>
 
-        {/* Bottom Section: Promo Card & Footer */}
-        <div className="p-4 space-y-4">
+        {/* Bottom Section */}
+        <div className="p-4 space-y-3">
           {/* Level Up Promo Card */}
           <div className="rounded-2xl bg-[#111c44] border border-blue-900/40 p-4 relative overflow-hidden group">
             <div className="flex items-center justify-between gap-2">
               <div>
                 <h4 className="text-xs font-bold text-white leading-snug">
-                  Level Up Your<br />Interview Skills!
+                  Ace Your Placement<br />Interviews!
                 </h4>
+                <p className="text-[10px] text-blue-300 mt-1">Realistic AI Evaluation</p>
               </div>
               <div className="w-10 h-10 rounded-xl bg-blue-600/20 border border-blue-500/30 flex items-center justify-center text-blue-400 shrink-0">
                 <TrendingUp className="w-5 h-5" />
@@ -116,15 +129,14 @@ export default function Sidebar({ isOpen, onClose }) {
             </div>
           </div>
 
-          {/* Footer Branding */}
-          <div className="text-center pt-1 border-t border-slate-800/60">
-            <div className="text-[11px] font-bold text-slate-200 tracking-wider uppercase">
-              COSMIC CODER'S
-            </div>
-            <div className="text-[10px] text-slate-400 mt-0.5">
-              Minor Project • OIST
-            </div>
-          </div>
+          {/* Logout Button */}
+          <button
+            onClick={handleLogout}
+            className="w-full flex items-center gap-3 px-4 py-2.5 rounded-xl text-slate-300 hover:text-white hover:bg-white/5 font-medium text-sm transition-colors cursor-pointer"
+          >
+            <LogOut className="w-4 h-4 text-slate-400" />
+            <span>Sign Out</span>
+          </button>
         </div>
       </aside>
     </>
