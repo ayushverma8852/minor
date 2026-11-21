@@ -7,6 +7,10 @@ import {
   getGeminiApiKey,
   AI_MODES
 } from '../services/aiService';
+import { interviewService } from '../services/interviewService';
+import { evaluationService } from '../services/evaluationService';
+import { historyService } from '../services/historyService';
+import { useAuth } from './AuthContext';
 
 const InterviewContext = createContext(null);
 
@@ -18,138 +22,8 @@ const DEFAULT_CONFIG = {
   roleTitle: 'Java Developer'
 };
 
-const SEED_HISTORY = [
-  {
-    id: 'int-2026-001',
-    technology: 'Java',
-    roleTitle: 'Java Developer',
-    date: '2026-11-19',
-    timeAgo: '2 days ago',
-    difficulty: 'Intermediate',
-    interviewType: 'Technical',
-    questionCount: 5,
-    durationMinutes: 18,
-    score: 84,
-    grade: 'Hire',
-    isLiveAI: true,
-    aiModelUsed: 'Google Gemini (gemini-1.5-flash)',
-    topicsCovered: ['OOP Polymorphism', 'Java Memory (Heap vs Stack)', 'HashMap Internal Working', 'Concurrency volatile', 'JVM Garbage Collection'],
-    overallScore: 84,
-    gradeColor: 'brand',
-    detailedMetrics: [
-      { name: 'Answer Relevance', score: 88, maxScore: 100, label: 'Direct alignment with interview topic' },
-      { name: 'Keyword Coverage', score: 84, maxScore: 100, label: 'Expected domain terminology' },
-      { name: 'Completeness & Depth', score: 80, maxScore: 100, label: 'Elaboration and thoroughness' },
-      { name: 'Quality & Structure', score: 84, maxScore: 100, label: 'Logical phrasing and examples' }
-    ],
-    strengths: [
-      'Accurately explained HashMap bucket collision resolution and Java 8 Red-Black Tree treeification.',
-      'Clearly distinguished stack frame lifecycle from heap garbage collection.',
-      'Strong grasp of volatile visibility versus synchronized mutual exclusion.'
-    ],
-    areasForImprovement: [
-      'Could elaborate on G1GC region allocations and pause targets in JVM tuning.',
-      'Include specific code snippets for method overriding @Override annotations.'
-    ]
-  },
-  {
-    id: 'int-2026-002',
-    technology: 'React',
-    roleTitle: 'React Frontend Developer',
-    date: '2026-11-16',
-    timeAgo: '5 days ago',
-    difficulty: 'Beginner',
-    interviewType: 'Technical',
-    questionCount: 5,
-    durationMinutes: 15,
-    score: 90,
-    grade: 'Strong Hire',
-    isLiveAI: false,
-    aiModelUsed: 'Deterministic Prototype Engine',
-    topicsCovered: ['State vs Props', 'Virtual DOM & Keys', 'useEffect Hook', 'React.memo & useMemo', 'Concurrent Features'],
-    overallScore: 90,
-    gradeColor: 'emerald',
-    detailedMetrics: [
-      { name: 'Answer Relevance', score: 92, maxScore: 100, label: 'Direct alignment with interview topic' },
-      { name: 'Keyword Coverage', score: 88, maxScore: 100, label: 'Expected domain terminology' },
-      { name: 'Completeness & Depth', score: 90, maxScore: 100, label: 'Elaboration and thoroughness' },
-      { name: 'Quality & Structure', score: 90, maxScore: 100, label: 'Logical phrasing and examples' }
-    ],
-    strengths: [
-      'Excellent breakdown of shallow reference equality in useState and why direct mutations fail.',
-      'Clear articulation of AbortController within useEffect cleanups.',
-      'Solid reasoning regarding when NOT to overuse useMemo.'
-    ],
-    areasForImprovement: [
-      'Deepen knowledge on React Server Components (RSC) streaming boundaries.'
-    ]
-  },
-  {
-    id: 'int-2026-003',
-    technology: 'SQL',
-    roleTitle: 'SQL & Database Engineer',
-    date: '2026-11-12',
-    timeAgo: '1 week ago',
-    difficulty: 'Intermediate',
-    interviewType: 'Technical',
-    questionCount: 5,
-    durationMinutes: 20,
-    score: 78,
-    grade: 'Hire',
-    isLiveAI: false,
-    aiModelUsed: 'Deterministic Prototype Engine',
-    topicsCovered: ['SQL Joins', 'WHERE vs HAVING', 'Database Indexing & B-Trees', 'ACID Transactions', 'Window Functions'],
-    overallScore: 78,
-    gradeColor: 'brand',
-    detailedMetrics: [
-      { name: 'Answer Relevance', score: 80, maxScore: 100, label: 'Direct alignment with interview topic' },
-      { name: 'Keyword Coverage', score: 76, maxScore: 100, label: 'Expected domain terminology' },
-      { name: 'Completeness & Depth', score: 78, maxScore: 100, label: 'Elaboration and thoroughness' },
-      { name: 'Quality & Structure', score: 78, maxScore: 100, label: 'Logical phrasing and examples' }
-    ],
-    strengths: [
-      'Accurate Venn diagram mental model for LEFT vs FULL OUTER JOINs.',
-      'Clear definition of B+ Tree clustered vs non-clustered index write amplification.'
-    ],
-    areasForImprovement: [
-      'Review SQL execution plan optimization with EXPLAIN ANALYZE.',
-      'Strengthen distinction between Repeatable Read and Serializable isolation levels.'
-    ]
-  },
-  {
-    id: 'int-2026-004',
-    technology: 'Python',
-    roleTitle: 'Python Developer',
-    date: '2026-11-05',
-    timeAgo: '2 weeks ago',
-    difficulty: 'Intermediate',
-    interviewType: 'Technical',
-    questionCount: 5,
-    durationMinutes: 22,
-    score: 82,
-    grade: 'Hire',
-    isLiveAI: false,
-    aiModelUsed: 'Deterministic Prototype Engine',
-    topicsCovered: ['Mutability & Passing', 'Comprehensions vs Generators', 'Decorators & Closures', 'GIL & Concurrency', 'Metaclasses'],
-    overallScore: 82,
-    gradeColor: 'brand',
-    detailedMetrics: [
-      { name: 'Answer Relevance', score: 84, maxScore: 100, label: 'Direct alignment with interview topic' },
-      { name: 'Keyword Coverage', score: 80, maxScore: 100, label: 'Expected domain terminology' },
-      { name: 'Completeness & Depth', score: 82, maxScore: 100, label: 'Elaboration and thoroughness' },
-      { name: 'Quality & Structure', score: 82, maxScore: 100, label: 'Logical phrasing and examples' }
-    ],
-    strengths: [
-      'Strong explanation of pass-by-object-reference and in-place list mutation.',
-      'Good understanding of GIL implications on CPU-bound multiprocessing versus I/O-bound asyncio.'
-    ],
-    areasForImprovement: [
-      'Explain functools.wraps importance when creating production decorators.'
-    ]
-  }
-];
-
 export function InterviewProvider({ children }) {
+  const { user } = useAuth();
   const [config, setConfig] = useState(DEFAULT_CONFIG);
 
   const [activeSession, setActiveSession] = useState({
@@ -162,59 +36,194 @@ export function InterviewProvider({ children }) {
     isSubmitted: false
   });
 
-  // History state synced with LocalStorage
-  const [history, setHistory] = useState(() => {
-    try {
-      const saved = localStorage.getItem('interviewprep_history');
-      if (saved) return JSON.parse(saved);
-    } catch (e) {
-      console.error('Failed to parse history from localStorage', e);
-    }
-    return SEED_HISTORY;
-  });
+  const getUserHistoryKey = (u) => {
+    if (!u) return 'interviewprep_history_guest';
+    return `interviewprep_history_${u.email || u.id || 'user'}`;
+  };
 
+  const getUserEvalKey = (u) => {
+    if (!u) return 'interviewprep_latest_eval_guest';
+    return `interviewprep_latest_eval_${u.email || u.id || 'user'}`;
+  };
+
+  // State strictly initialized as empty (zero) for all new sessions
+  const [history, setHistory] = useState([]);
+  const [latestEvaluation, setLatestEvaluation] = useState(null);
+
+  // 1. One-time purge of legacy mock seed records from localStorage
   useEffect(() => {
     try {
-      localStorage.setItem('interviewprep_history', JSON.stringify(history));
+      const legacy = localStorage.getItem('interviewprep_history');
+      if (legacy && (legacy.includes('int-2026-001') || legacy.includes('int-2026-002') || legacy.includes('Alex Morgan') || legacy.includes('int-2026-'))) {
+        localStorage.removeItem('interviewprep_history');
+      }
+      const legacyEval = localStorage.getItem('interviewprep_latest_evaluation');
+      if (legacyEval && (legacyEval.includes('int-2026-001') || legacyEval.includes('int-2026-002'))) {
+        localStorage.removeItem('interviewprep_latest_evaluation');
+      }
     } catch (e) {
-      console.error('Failed to persist history to localStorage', e);
+      // ignore
     }
-  }, [history]);
+  }, []);
 
-  // Latest evaluation state
-  const [latestEvaluation, setLatestEvaluation] = useState(() => {
-    try {
-      const saved = localStorage.getItem('interviewprep_latest_evaluation');
-      if (saved) return JSON.parse(saved);
-    } catch (e) {
-      console.error(e);
-    }
-    return SEED_HISTORY[0];
-  });
-
+  // 2. Load user-specific history whenever active user changes
   useEffect(() => {
-    if (latestEvaluation) {
+    if (!user) {
+      setHistory([]);
+      setLatestEvaluation(null);
+      return;
+    }
+
+    const key = getUserHistoryKey(user);
+    const evalKey = getUserEvalKey(user);
+
+    let initialItems = [];
+    try {
+      const raw = localStorage.getItem(key);
+      if (raw) {
+        const parsed = JSON.parse(raw);
+        if (Array.isArray(parsed)) {
+          // Filter out any mock seed items
+          initialItems = parsed.filter(item => !String(item.id).startsWith('int-2026-00'));
+        }
+      }
+    } catch (e) {
+      console.warn('Failed parsing user history:', e);
+    }
+
+    // New user starts at zero
+    setHistory(initialItems);
+
+    try {
+      const rawEval = localStorage.getItem(evalKey);
+      if (rawEval) {
+        const parsedEval = JSON.parse(rawEval);
+        if (parsedEval && !String(parsedEval.interviewId).startsWith('int-2026-00')) {
+          setLatestEvaluation(parsedEval);
+        } else {
+          setLatestEvaluation(null);
+        }
+      } else {
+        setLatestEvaluation(null);
+      }
+    } catch (e) {
+      setLatestEvaluation(null);
+    }
+
+    // Attempt sync with backend for authenticated user
+    async function syncBackendUserHistory() {
       try {
-        localStorage.setItem('interviewprep_latest_evaluation', JSON.stringify(latestEvaluation));
+        const token = localStorage.getItem('token') || localStorage.getItem('interviewprep_jwt');
+        if (token) {
+          const res = await historyService.getUserHistory();
+          if (res && res.data && Array.isArray(res.data)) {
+            const filtered = res.data.filter(item => !String(item.id).startsWith('int-2026-00'));
+            if (filtered.length > 0) {
+              const formatted = filtered.map((item) => ({
+                id: item.id,
+                technology: item.technology,
+                roleTitle: `${item.technology} Developer`,
+                date: item.createdAt ? new Date(item.createdAt).toISOString().split('T')[0] : (item.date || 'Today'),
+                timeAgo: 'Recent',
+                difficulty: item.difficulty,
+                interviewType: item.interviewType,
+                questionCount: item.totalQuestions || 5,
+                durationMinutes: 15,
+                score: item.totalScore || item.score || 0,
+                overallScore: item.totalScore || item.score || 0,
+                grade: (item.totalScore || 0) >= 80 ? 'Strong Hire' : (item.totalScore || 0) >= 60 ? 'Hire' : 'Needs Practice',
+                gradeColor: (item.totalScore || 0) >= 80 ? 'emerald' : 'brand',
+                strengths: item.strengths || [],
+                areasForImprovement: item.areasForImprovement || [],
+                topicsCovered: item.topicsCovered || []
+              }));
+              setHistory(formatted);
+              localStorage.setItem(key, JSON.stringify(formatted));
+            } else if (!initialItems.length) {
+              // New user has 0 interviews in database
+              setHistory([]);
+              localStorage.setItem(key, JSON.stringify([]));
+            }
+          }
+        }
+      } catch (err) {
+        console.warn('Backend history sync skipped:', err.message);
+      }
+    }
+
+    syncBackendUserHistory();
+  }, [user?.email, user?.id]);
+
+  // 3. Persist history to user-specific storage whenever it updates
+  useEffect(() => {
+    if (user) {
+      const key = getUserHistoryKey(user);
+      try {
+        localStorage.setItem(key, JSON.stringify(history));
       } catch (e) {
         console.error(e);
       }
     }
-  }, [latestEvaluation]);
+  }, [history, user]);
+
+  // 4. Persist latest evaluation to user-specific storage
+  useEffect(() => {
+    if (user && latestEvaluation) {
+      const evalKey = getUserEvalKey(user);
+      try {
+        localStorage.setItem(evalKey, JSON.stringify(latestEvaluation));
+      } catch (e) {
+        console.error(e);
+      }
+    }
+  }, [latestEvaluation, user]);
 
   // Start interview with selected configuration
-  const startInterview = (newConfig) => {
+  const startInterview = async (newConfig) => {
     const updatedConfig = { ...config, ...newConfig };
     setConfig(updatedConfig);
 
-    const questions = getQuestionsForInterview({
+    let questions = getQuestionsForInterview({
       technology: updatedConfig.technology,
       difficulty: updatedConfig.difficulty,
       questionCount: Number(updatedConfig.questionCount) || 5,
       interviewType: updatedConfig.interviewType || 'Technical'
     });
 
+    let backendId = null;
+    try {
+      const res = await interviewService.createInterview({
+        technology: updatedConfig.technology,
+        difficulty: updatedConfig.difficulty,
+        interviewType: updatedConfig.interviewType || 'Technical',
+        numberOfQuestions: Number(updatedConfig.questionCount) || 5
+      });
+      if (res && res.id) {
+        backendId = res.id;
+        if (res.questions && res.questions.length > 0) {
+          questions = res.questions.map((q, idx) => ({
+            id: q.id || idx + 1,
+            question: q.questionText,
+            topic: q.topic || updatedConfig.technology,
+            difficulty: q.difficulty || updatedConfig.difficulty,
+            expectedConcepts: q.expectedConcepts
+              ? Array.isArray(q.expectedConcepts)
+                ? q.expectedConcepts
+                : q.expectedConcepts.split(',')
+              : [],
+            sampleIdealAnswer: q.sampleIdealAnswer || '',
+            hint: q.expectedConcepts
+              ? `Focus on: ${Array.isArray(q.expectedConcepts) ? q.expectedConcepts.join(', ') : q.expectedConcepts}`
+              : 'Explain principles and real-world application'
+          }));
+        }
+      }
+    } catch (e) {
+      console.warn('Backend createInterview fallback to local bank:', e);
+    }
+
     setActiveSession({
+      backendId,
       isActive: true,
       questions,
       currentIndex: 0,
@@ -226,13 +235,18 @@ export function InterviewProvider({ children }) {
   };
 
   const saveAnswer = (questionId, answerText) => {
-    setActiveSession(prev => ({
-      ...prev,
-      answers: {
-        ...prev.answers,
-        [questionId]: answerText
+    setActiveSession((prev) => {
+      if (prev.backendId) {
+        interviewService.submitAnswer(prev.backendId, questionId, answerText).catch((e) => console.warn(e));
       }
-    }));
+      return {
+        ...prev,
+        answers: {
+          ...prev.answers,
+          [questionId]: answerText
+        }
+      };
+    });
   };
 
   const nextQuestion = () => {
@@ -256,40 +270,98 @@ export function InterviewProvider({ children }) {
     }));
   };
 
-  // Complete interview: Run Live Gemini AI Model if enabled, or Deterministic scoring
+  // Complete interview: Run Spring Boot -> FastAPI AI Microservice, or Live Gemini, or Deterministic scoring
   const completeInterview = async () => {
     const mode = getEvaluationMode();
     const hasKey = Boolean(getGeminiApiKey());
     let evaluation;
 
-    if (mode === AI_MODES.LIVE_AI && hasKey) {
+    // 1. If backend interview session exists, complete via backend + FastAPI AI microservice
+    if (activeSession.backendId) {
       try {
-        evaluation = await evaluateInterviewWithLiveAI({
-          config,
-          questions: activeSession.questions,
-          answers: activeSession.answers,
-          timeElapsedSeconds: activeSession.timeElapsed || 600
-        });
-      } catch (err) {
-        console.warn('Live AI Evaluation failed, falling back to Deterministic engine:', err);
-        // Fallback with notice
+        await interviewService.completeInterview(activeSession.backendId);
+        const evalRes = await evaluationService.getInterviewResults(activeSession.backendId);
+        if (evalRes && evalRes.questions && evalRes.questions.length > 0) {
+          const overallScore = evalRes.overallScore || 0;
+          const detailedReviews = evalRes.questions.map((q, idx) => ({
+            questionNumber: idx + 1,
+            questionId: q.questionId,
+            topic: q.topic || config.technology,
+            difficulty: q.difficulty || config.difficulty,
+            questionText: q.questionText,
+            candidateAnswer: q.studentAnswer || '[No response provided]',
+            score: q.score || 0,
+            correctnessScore: q.correctness || 0,
+            relevanceScore: q.relevance || 0,
+            completenessScore: q.completeness || 0,
+            matchedKeywords: q.matchedConcepts || [],
+            missedKeywords: q.missedConcepts || [],
+            strengths: q.strengths || [],
+            weaknesses: q.weaknesses || [],
+            improvements: q.improvementSuggestions || [],
+            sampleIdealAnswer: q.modelAnswer || '',
+            feedback: q.explanation || 'Evaluated by AI Service'
+          }));
+
+          evaluation = {
+            interviewId: `int-${activeSession.backendId}`,
+            date: new Date().toISOString().split('T')[0],
+            technology: config.technology,
+            difficulty: config.difficulty,
+            interviewType: config.interviewType,
+            questionCount: activeSession.questions.length,
+            durationMinutes: Math.max(1, Math.round((activeSession.timeElapsed || 300) / 60)),
+            overallScore,
+            grade: overallScore >= 85 ? 'Strong Hire' : overallScore >= 70 ? 'Hire' : overallScore >= 50 ? 'Borderline' : 'Needs Practice',
+            gradeColor: overallScore >= 85 ? 'emerald' : overallScore >= 70 ? 'brand' : overallScore >= 50 ? 'amber' : 'rose',
+            isLiveAI: true,
+            aiModelUsed: 'FastAPI AI Microservice (LLM/Deterministic)',
+            detailedMetrics: [
+              { name: 'Answer Relevance', score: Math.round(evalRes.questions.reduce((a, b) => a + (b.relevance || 0), 0) / evalRes.questions.length), maxScore: 100, label: 'Direct alignment with question topic' },
+              { name: 'Technical Correctness', score: Math.round(evalRes.questions.reduce((a, b) => a + (b.correctness || 0), 0) / evalRes.questions.length), maxScore: 100, label: 'Technical precision and mechanics' },
+              { name: 'Completeness & Depth', score: Math.round(evalRes.questions.reduce((a, b) => a + (b.completeness || 0), 0) / evalRes.questions.length), maxScore: 100, label: 'Elaboration and coverage' },
+              { name: 'Quality & Structure', score: overallScore, maxScore: 100, label: 'Logical phrasing and explanation' }
+            ],
+            strengths: evalRes.overallStrengths && evalRes.overallStrengths.length > 0 ? evalRes.overallStrengths : ['Demonstrated good understanding of the core subject.'],
+            areasForImprovement: evalRes.overallWeaknesses && evalRes.overallWeaknesses.length > 0 ? evalRes.overallWeaknesses : ['Review edge cases and implementation nuances.'],
+            questionReviews: detailedReviews
+          };
+        }
+      } catch (backendErr) {
+        console.warn('Backend evaluation call fallback to client engine:', backendErr);
+      }
+    }
+
+    // 2. Client-side evaluation fallback if backend did not produce evaluation
+    if (!evaluation) {
+      if (mode === AI_MODES.LIVE_AI && hasKey) {
+        try {
+          evaluation = await evaluateInterviewWithLiveAI({
+            config,
+            questions: activeSession.questions,
+            answers: activeSession.answers,
+            timeElapsedSeconds: activeSession.timeElapsed || 600
+          });
+        } catch (err) {
+          console.warn('Live AI Evaluation failed, falling back to Deterministic engine:', err);
+          evaluation = evaluateInterviewSession({
+            config,
+            questions: activeSession.questions,
+            answers: activeSession.answers,
+            timeElapsedSeconds: activeSession.timeElapsed || 600
+          });
+          evaluation.fallbackNotice = `Live AI call encountered an issue (${err.message}). Evaluated using offline deterministic engine.`;
+        }
+      } else {
         evaluation = evaluateInterviewSession({
           config,
           questions: activeSession.questions,
           answers: activeSession.answers,
           timeElapsedSeconds: activeSession.timeElapsed || 600
         });
-        evaluation.fallbackNotice = `Live AI call encountered an issue (${err.message}). Evaluated using offline deterministic engine.`;
+        evaluation.isLiveAI = false;
+        evaluation.aiModelUsed = 'Deterministic Prototype Engine';
       }
-    } else {
-      evaluation = evaluateInterviewSession({
-        config,
-        questions: activeSession.questions,
-        answers: activeSession.answers,
-        timeElapsedSeconds: activeSession.timeElapsed || 600
-      });
-      evaluation.isLiveAI = false;
-      evaluation.aiModelUsed = 'Deterministic Prototype Engine';
     }
 
     // Save to latest evaluation
@@ -297,20 +369,20 @@ export function InterviewProvider({ children }) {
 
     // Add to history
     const historyItem = {
-      id: evaluation.interviewId,
+      id: evaluation.interviewId || `int-${Date.now()}`,
       technology: config.technology,
       roleTitle: `${config.technology} Developer`,
-      date: evaluation.date,
+      date: evaluation.date || new Date().toISOString().split('T')[0],
       timeAgo: 'Just now',
       difficulty: config.difficulty,
       interviewType: config.interviewType,
       questionCount: activeSession.questions.length,
-      durationMinutes: evaluation.durationMinutes,
+      durationMinutes: evaluation.durationMinutes || 15,
       score: evaluation.overallScore,
       grade: evaluation.grade,
       isLiveAI: evaluation.isLiveAI,
       aiModelUsed: evaluation.aiModelUsed,
-      topicsCovered: activeSession.questions.map(q => q.topic),
+      topicsCovered: activeSession.questions.map(q => q.topic || config.technology),
       overallScore: evaluation.overallScore,
       gradeColor: evaluation.gradeColor,
       detailedMetrics: evaluation.detailedMetrics,
@@ -335,12 +407,23 @@ export function InterviewProvider({ children }) {
   };
 
   const deleteHistoryItem = (id) => {
+    historyService.deleteHistoryItem(id).catch(e => console.warn(e));
     setHistory(prev => prev.filter(item => item.id !== id));
   };
 
   const clearAllHistory = () => {
     setHistory([]);
+    setLatestEvaluation(null);
+    if (user) {
+      try {
+        localStorage.removeItem(getUserHistoryKey(user));
+        localStorage.removeItem(getUserEvalKey(user));
+      } catch (e) {
+        // ignore
+      }
+    }
     localStorage.removeItem('interviewprep_history');
+    localStorage.removeItem('interviewprep_latest_evaluation');
   };
 
   const resetSession = () => {

@@ -34,11 +34,26 @@ export default function TopNavbar({ onMenuToggle }) {
   const [isLiveActive, setIsLiveActive] = useState(false);
   const [modelName, setModelName] = useState('gemini-1.5-flash');
 
-  const updateAIStatus = () => {
-    const mode = getEvaluationMode();
+  const updateAIStatus = async () => {
     const hasKey = Boolean(getGeminiApiKey());
-    setIsLiveActive(mode === AI_MODES.LIVE_AI && hasKey);
-    setModelName(getSelectedAIModel());
+    if (hasKey) {
+      setIsLiveActive(true);
+      setModelName(getSelectedAIModel());
+      return;
+    }
+
+    try {
+      const res = await fetch('http://localhost:8000/health');
+      if (res.ok) {
+        setIsLiveActive(true);
+        setModelName('FastAPI Microservice');
+        return;
+      }
+    } catch (e) {
+      // fallback
+    }
+
+    setIsLiveActive(false);
   };
 
   useEffect(() => {

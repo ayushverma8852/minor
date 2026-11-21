@@ -561,3 +561,8 @@ export function getQuestionsForInterview({
 
   return combined.slice(0, questionCount);
 }
+
+// Convenient alias for positional parameters
+export function getInterviewQuestions(technology = 'Java', difficulty = 'Intermediate', questionCount = 5) {
+  return getQuestionsForInterview({ technology, difficulty, questionCount });
+}

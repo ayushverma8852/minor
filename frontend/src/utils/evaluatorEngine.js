@@ -266,3 +266,11 @@ export function evaluateInterviewSession({
     questionReviews: reviews
   };
 }
+
+export const evaluateAnswerLocally = evaluateQuestionAnswer;
+
+export function computeOverallInterviewScore(evaluations = []) {
+  if (!evaluations || !evaluations.length) return 0;
+  const sum = evaluations.reduce((acc, curr) => acc + (curr.score || 0), 0);
+  return Math.round(sum / evaluations.length);
+}

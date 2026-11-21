@@ -55,15 +55,9 @@ export default function Performance() {
       score: item.score || item.overallScore || 0
     }));
 
-  // Fallback if empty
-  const displayTrendData = trendData.length > 0 ? trendData : [
-    { name: 'Session 1', date: '2026-11-01', tech: 'Java', score: 70 },
-    { name: 'Session 2', date: '2026-11-05', tech: 'Python', score: 76 },
-    { name: 'Session 3', date: '2026-11-10', tech: 'React', score: 82 },
-    { name: 'Session 4', date: '2026-11-15', tech: 'SQL', score: 85 }
-  ];
+  const displayTrendData = trendData;
 
-  // Calculate Technology-wise performance
+  // Calculate Technology-wise performance from user's actual interviews
   const techs = ['Java', 'Python', 'JavaScript', 'React', 'SQL'];
   const techPerformance = techs.map(techName => {
     const techSessions = history.filter(h => (h.technology || '').toLowerCase() === techName.toLowerCase());
@@ -75,55 +69,31 @@ export default function Performance() {
         attempts: techSessions.length
       };
     }
-    // Baseline sample scores for technologies without attempts yet
-    const defaults = { Java: 84, Python: 82, JavaScript: 75, React: 90, SQL: 78 };
     return {
       technology: techName,
-      score: defaults[techName] || 75,
+      score: 0,
       attempts: 0
     };
   });
 
-  // Extract Strong Topics (topics with >= 80% or positive reviews)
-  const strongTopics = [
-    { name: 'React Virtual DOM & Reconciliation', tech: 'React', score: 92, status: 'Mastered' },
-    { name: 'Java OOP & Polymorphism', tech: 'Java', score: 88, status: 'Strong' },
-    { name: 'Java HashMap Internal Collision Resolution', tech: 'Java', score: 86, status: 'Strong' },
-    { name: 'Python Mutability & Scope', tech: 'Python', score: 84, status: 'Strong' },
-    { name: 'SQL Joins & Referential Keys', tech: 'SQL', score: 82, status: 'Strong' }
-  ];
+  // Extract user's actual strong and weak topics from session reviews
+  const dynamicStrong = [];
+  const dynamicWeak = [];
+  history.forEach(h => {
+    (h.strengths || []).forEach(s => {
+      if (dynamicStrong.length < 5 && !dynamicStrong.some(item => item.name === s)) {
+        dynamicStrong.push({ name: s, tech: h.technology || 'General', score: Math.min(100, (h.score || 80) + 5), status: 'Strong' });
+      }
+    });
+    (h.areasForImprovement || []).forEach(w => {
+      if (dynamicWeak.length < 5 && !dynamicWeak.some(item => item.name === w)) {
+        dynamicWeak.push({ name: w, tech: h.technology || 'General', score: Math.max(45, (h.score || 70) - 10), status: 'Needs Practice', action: 'Review concept benchmark and model answers' });
+      }
+    });
+  });
 
-  // Extract Weak Topics (topics with < 75% or improvement flags)
-  const weakTopics = [
-    {
-      name: 'JVM Garbage Collection Tuning (G1GC / ZGC)',
-      tech: 'Java',
-      score: 68,
-      status: 'Needs Practice',
-      action: 'Study Young vs Old generation allocations & GC stop-the-world pauses'
-    },
-    {
-      name: 'SQL Query Plan Optimization (EXPLAIN ANALYZE)',
-      tech: 'SQL',
-      score: 70,
-      status: 'Needs Practice',
-      action: 'Practice identifying sequential scans vs index seeks and costs'
-    },
-    {
-      name: 'Python Global Interpreter Lock (GIL) Concurrency',
-      tech: 'Python',
-      score: 72,
-      status: 'Needs Practice',
-      action: 'Review CPU-bound multiprocessing vs I/O-bound asyncio'
-    },
-    {
-      name: 'JavaScript Debounce vs Throttle Implementation',
-      tech: 'JavaScript',
-      score: 74,
-      status: 'Needs Practice',
-      action: 'Code hands-on timer cancellation and execution window patterns'
-    }
-  ];
+  const strongTopics = dynamicStrong;
+  const weakTopics = dynamicWeak;
 
   return (
     <div className="space-y-8 animate-in fade-in duration-300">
@@ -209,41 +179,58 @@ export default function Performance() {
             </span>
           </div>
 
-          <div className="h-64 w-full pt-4">
-            <ResponsiveContainer width="100%" height="100%">
-              <AreaChart data={displayTrendData} margin={{ top: 10, right: 20, left: -20, bottom: 0 }}>
-                <defs>
-                  <linearGradient id="scoreColor" x1="0" y1="0" x2="0" y2="1">
-                    <stop offset="5%" stopColor="#2563eb" stopOpacity={0.3} />
-                    <stop offset="95%" stopColor="#2563eb" stopOpacity={0.0} />
-                  </linearGradient>
-                </defs>
-                <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" vertical={false} />
-                <XAxis dataKey="name" stroke="#94a3b8" fontSize={11} tickLine={false} />
-                <YAxis domain={[0, 100]} stroke="#94a3b8" fontSize={11} tickLine={false} />
-                <Tooltip
-                  contentStyle={{
-                    backgroundColor: '#0f172a',
-                    border: 'none',
-                    borderRadius: '12px',
-                    color: '#fff',
-                    fontSize: '12px'
-                  }}
-                  formatter={(val, name, item) => [`${val}%`, `Score (${item.payload.tech})`]}
-                />
-                <Area
-                  type="monotone"
-                  dataKey="score"
-                  stroke="#2563eb"
-                  strokeWidth={3}
-                  fillOpacity={1}
-                  fill="url(#scoreColor)"
-                  dot={{ r: 4, fill: '#2563eb', stroke: '#fff', strokeWidth: 2 }}
-                  activeDot={{ r: 6, fill: '#1d4ed8' }}
-                />
-              </AreaChart>
-            </ResponsiveContainer>
-          </div>
+          {displayTrendData.length === 0 ? (
+            <div className="h-64 w-full flex flex-col items-center justify-center text-center p-6 border border-dashed border-slate-200 rounded-2xl bg-slate-50/50">
+              <div className="w-12 h-12 rounded-full bg-blue-50 text-blue-600 flex items-center justify-center mb-3">
+                <TrendingUp className="w-6 h-6" />
+              </div>
+              <div className="text-sm font-bold text-slate-800">No mock interview sessions yet</div>
+              <div className="text-xs text-slate-500 mt-1 max-w-sm">
+                Complete your first interview to track your score progression and performance trajectory.
+              </div>
+              <Link to="/start-interview" className="mt-4">
+                <button className="px-4 py-2 rounded-xl bg-blue-600 text-white font-semibold text-xs hover:bg-blue-700 transition-colors cursor-pointer">
+                  Start First Interview
+                </button>
+              </Link>
+            </div>
+          ) : (
+            <div className="h-64 w-full pt-4">
+              <ResponsiveContainer width="100%" height="100%">
+                <AreaChart data={displayTrendData} margin={{ top: 10, right: 20, left: -20, bottom: 0 }}>
+                  <defs>
+                    <linearGradient id="scoreColor" x1="0" y1="0" x2="0" y2="1">
+                      <stop offset="5%" stopColor="#2563eb" stopOpacity={0.3} />
+                      <stop offset="95%" stopColor="#2563eb" stopOpacity={0.0} />
+                    </linearGradient>
+                  </defs>
+                  <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" vertical={false} />
+                  <XAxis dataKey="name" stroke="#94a3b8" fontSize={11} tickLine={false} />
+                  <YAxis domain={[0, 100]} stroke="#94a3b8" fontSize={11} tickLine={false} />
+                  <Tooltip
+                    contentStyle={{
+                      backgroundColor: '#0f172a',
+                      border: 'none',
+                      borderRadius: '12px',
+                      color: '#fff',
+                      fontSize: '12px'
+                    }}
+                    formatter={(val, name, item) => [`${val}%`, `Score (${item.payload.tech})`]}
+                  />
+                  <Area
+                    type="monotone"
+                    dataKey="score"
+                    stroke="#2563eb"
+                    strokeWidth={3}
+                    fillOpacity={1}
+                    fill="url(#scoreColor)"
+                    dot={{ r: 4, fill: '#2563eb', stroke: '#fff', strokeWidth: 2 }}
+                    activeDot={{ r: 6, fill: '#1d4ed8' }}
+                  />
+                </AreaChart>
+              </ResponsiveContainer>
+            </div>
+          )}
         </div>
 
         {/* Right: Technology-Wise Performance Bar Chart (5 columns) */}
@@ -263,38 +250,50 @@ export default function Performance() {
             </span>
           </div>
 
-          <div className="h-64 w-full pt-4">
-            <ResponsiveContainer width="100%" height="100%">
-              <BarChart data={techPerformance} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
-                <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" vertical={false} />
-                <XAxis dataKey="technology" stroke="#94a3b8" fontSize={11} tickLine={false} />
-                <YAxis domain={[0, 100]} stroke="#94a3b8" fontSize={11} tickLine={false} />
-                <Tooltip
-                  contentStyle={{
-                    backgroundColor: '#0f172a',
-                    border: 'none',
-                    borderRadius: '12px',
-                    color: '#fff',
-                    fontSize: '12px'
-                  }}
-                  formatter={(val) => [`${val}%`, 'Avg Score']}
-                />
-                <Bar dataKey="score" radius={[6, 6, 0, 0]}>
-                  {techPerformance.map((entry, index) => (
-                    <Cell
-                      key={`cell-${index}`}
-                      fill={
-                        entry.technology === 'Java' ? '#f59e0b' :
-                        entry.technology === 'Python' ? '#3b82f6' :
-                        entry.technology === 'JavaScript' ? '#eab308' :
-                        entry.technology === 'React' ? '#06b6d4' : '#10b981'
-                      }
-                    />
-                  ))}
-                </Bar>
-              </BarChart>
-            </ResponsiveContainer>
-          </div>
+          {techPerformance.every(t => t.attempts === 0) ? (
+            <div className="h-64 w-full flex flex-col items-center justify-center text-center p-6 border border-dashed border-slate-200 rounded-2xl bg-slate-50/50">
+              <div className="w-12 h-12 rounded-full bg-indigo-50 text-indigo-600 flex items-center justify-center mb-3">
+                <BarChart2 className="w-6 h-6" />
+              </div>
+              <div className="text-sm font-bold text-slate-800">No technology data yet</div>
+              <div className="text-xs text-slate-500 mt-1 max-w-sm">
+                Practice Java, Python, React, JavaScript, or SQL to view domain-level performance breakdown.
+              </div>
+            </div>
+          ) : (
+            <div className="h-64 w-full pt-4">
+              <ResponsiveContainer width="100%" height="100%">
+                <BarChart data={techPerformance} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
+                  <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" vertical={false} />
+                  <XAxis dataKey="technology" stroke="#94a3b8" fontSize={11} tickLine={false} />
+                  <YAxis domain={[0, 100]} stroke="#94a3b8" fontSize={11} tickLine={false} />
+                  <Tooltip
+                    contentStyle={{
+                      backgroundColor: '#0f172a',
+                      border: 'none',
+                      borderRadius: '12px',
+                      color: '#fff',
+                      fontSize: '12px'
+                    }}
+                    formatter={(val) => [`${val}%`, 'Avg Score']}
+                  />
+                  <Bar dataKey="score" radius={[6, 6, 0, 0]}>
+                    {techPerformance.map((entry, index) => (
+                      <Cell
+                        key={`cell-${index}`}
+                        fill={
+                          entry.technology === 'Java' ? '#f59e0b' :
+                          entry.technology === 'Python' ? '#3b82f6' :
+                          entry.technology === 'JavaScript' ? '#eab308' :
+                          entry.technology === 'React' ? '#06b6d4' : '#10b981'
+                        }
+                      />
+                    ))}
+                  </Bar>
+                </BarChart>
+              </ResponsiveContainer>
+            </div>
+          )}
         </div>
       </div>
 
@@ -312,31 +311,39 @@ export default function Performance() {
             </div>
           </div>
 
-          <div className="space-y-3">
-            {strongTopics.map((topic, idx) => (
-              <div
-                key={idx}
-                className="p-3.5 rounded-xl border border-slate-100 bg-slate-50/70 hover:bg-emerald-50/40 hover:border-emerald-200 transition-colors space-y-2"
-              >
-                <div className="flex items-center justify-between text-xs font-bold">
-                  <span className="text-slate-800">{topic.name}</span>
-                  <span className="text-emerald-700 bg-emerald-100 px-2 py-0.5 rounded-md font-mono">
-                    {topic.score}%
-                  </span>
+          {strongTopics.length === 0 ? (
+            <div className="text-center py-8 text-xs text-slate-500 border border-dashed border-slate-200 rounded-2xl bg-slate-50/50">
+              <CheckCircle2 className="w-8 h-8 text-slate-300 mx-auto mb-2" />
+              <div className="font-semibold text-slate-700">No strong topics recorded yet</div>
+              <div className="text-[11px] text-slate-400 mt-0.5">Complete interview drills to identify your strengths.</div>
+            </div>
+          ) : (
+            <div className="space-y-3">
+              {strongTopics.map((topic, idx) => (
+                <div
+                  key={idx}
+                  className="p-3.5 rounded-xl border border-slate-100 bg-slate-50/70 hover:bg-emerald-50/40 hover:border-emerald-200 transition-colors space-y-2"
+                >
+                  <div className="flex items-center justify-between text-xs font-bold">
+                    <span className="text-slate-800">{topic.name}</span>
+                    <span className="text-emerald-700 bg-emerald-100 px-2 py-0.5 rounded-md font-mono">
+                      {topic.score}%
+                    </span>
+                  </div>
+                  <div className="w-full h-1.5 bg-slate-200 rounded-full overflow-hidden">
+                    <div
+                      className="h-full bg-emerald-500 rounded-full"
+                      style={{ width: `${topic.score}%` }}
+                    />
+                  </div>
+                  <div className="flex items-center justify-between text-[11px] text-slate-500">
+                    <span>Stack: {topic.tech}</span>
+                    <span className="text-emerald-600 font-semibold">{topic.status}</span>
+                  </div>
                 </div>
-                <div className="w-full h-1.5 bg-slate-200 rounded-full overflow-hidden">
-                  <div
-                    className="h-full bg-emerald-500 rounded-full"
-                    style={{ width: `${topic.score}%` }}
-                  />
-                </div>
-                <div className="flex items-center justify-between text-[11px] text-slate-500">
-                  <span>Stack: {topic.tech}</span>
-                  <span className="text-emerald-600 font-semibold">{topic.status}</span>
-                </div>
-              </div>
-            ))}
-          </div>
+              ))}
+            </div>
+          )}
         </div>
 
         {/* Weak Topics */}
@@ -351,31 +358,39 @@ export default function Performance() {
             </div>
           </div>
 
-          <div className="space-y-3">
-            {weakTopics.map((topic, idx) => (
-              <div
-                key={idx}
-                className="p-3.5 rounded-xl border border-slate-100 bg-slate-50/70 hover:bg-amber-50/40 hover:border-amber-200 transition-colors space-y-2"
-              >
-                <div className="flex items-center justify-between text-xs font-bold">
-                  <span className="text-slate-800">{topic.name}</span>
-                  <span className="text-amber-700 bg-amber-100 px-2 py-0.5 rounded-md font-mono">
-                    {topic.score}%
-                  </span>
+          {weakTopics.length === 0 ? (
+            <div className="text-center py-8 text-xs text-slate-500 border border-dashed border-slate-200 rounded-2xl bg-slate-50/50">
+              <AlertTriangle className="w-8 h-8 text-slate-300 mx-auto mb-2" />
+              <div className="font-semibold text-slate-700">No weak topics identified yet</div>
+              <div className="text-[11px] text-slate-400 mt-0.5">Complete mock sessions to identify areas for improvement.</div>
+            </div>
+          ) : (
+            <div className="space-y-3">
+              {weakTopics.map((topic, idx) => (
+                <div
+                  key={idx}
+                  className="p-3.5 rounded-xl border border-slate-100 bg-slate-50/70 hover:bg-amber-50/40 hover:border-amber-200 transition-colors space-y-2"
+                >
+                  <div className="flex items-center justify-between text-xs font-bold">
+                    <span className="text-slate-800">{topic.name}</span>
+                    <span className="text-amber-700 bg-amber-100 px-2 py-0.5 rounded-md font-mono">
+                      {topic.score}%
+                    </span>
+                  </div>
+                  <div className="w-full h-1.5 bg-slate-200 rounded-full overflow-hidden">
+                    <div
+                      className="h-full bg-amber-500 rounded-full"
+                      style={{ width: `${topic.score}%` }}
+                    />
+                  </div>
+                  <div className="p-2 rounded-lg bg-white border border-slate-200/80 text-[11px] text-slate-600">
+                    <span className="font-semibold text-slate-800">Recommendation: </span>
+                    {topic.action}
+                  </div>
                 </div>
-                <div className="w-full h-1.5 bg-slate-200 rounded-full overflow-hidden">
-                  <div
-                    className="h-full bg-amber-500 rounded-full"
-                    style={{ width: `${topic.score}%` }}
-                  />
-                </div>
-                <div className="p-2 rounded-lg bg-white border border-slate-200/80 text-[11px] text-slate-600">
-                  <span className="font-semibold text-slate-800">Recommendation: </span>
-                  {topic.action}
-                </div>
-              </div>
-            ))}
-          </div>
+              ))}
+            </div>
+          )}
         </div>
       </div>
     </div>

@@ -1,130 +1,235 @@
-# InterviewPrep AI – AI Powered Interview Preparation System
+# InterviewPrep AI – AI-Powered Interview Preparation Platform
 
-A complete, professional, fully functional web application designed to help students prepare for technical and behavioral job interviews using **Live Generative AI Models (Google Gemini)** and transparent scoring evaluations.
+![InterviewPrep AI](https://img.shields.io/badge/Status-Production%20Ready-brightgreen)
+![Java](https://img.shields.io/badge/Java-21-orange?logo=openjdk)
+![Spring Boot](https://img.shields.io/badge/Spring%20Boot-3.3.5-brightgreen?logo=springboot)
+![Python](https://img.shields.io/badge/Python-3.11%2B-blue?logo=python)
+![FastAPI](https://img.shields.io/badge/FastAPI-0.115-teal?logo=fastapi)
+![React](https://img.shields.io/badge/React-18-blue?logo=react)
+![Vite](https://img.shields.io/badge/Vite-6-purple?logo=vite)
+![MySQL](https://img.shields.io/badge/MySQL-8.0%2B-blue?logo=mysql)
+![TailwindCSS](https://img.shields.io/badge/TailwindCSS-3.4-38B2AC?logo=tailwindcss)
 
----
-
-## 🌟 Live Demo Credentials
-- **Demo Email**: `demo@interviewprep.ai`
-- **Demo Password**: `password123`
-- *Or click the **"One-Click Demo Sign In"** button on the Login page!*
-
----
-
-## 🤖 Live AI Model Integration (Google Gemini)
-
-InterviewPrep AI is powered by **dual-engine architecture**:
-1. **✨ Live Generative AI Model (Google Gemini)**: Real-time LLM evaluations with custom qualitative critiques, specific strengths, weaknesses, and benchmark answers using `gemini-1.5-flash`, `gemini-2.0-flash`, or `gemini-1.5-pro`.
-2. **⚡ Deterministic Prototype Engine**: Fast rule-based scoring engine evaluating Relevance, Keyword Coverage, Completeness, and Quality without requiring an API key or internet access.
-
-### How to Connect Your Free Google Gemini Key:
-1. In the app top navigation bar or **Settings**, click **"Configure Live AI"** or the AI pill.
-2. Select **Live Gemini AI Model**.
-3. Paste your free Google Gemini API key ([Get a free key from Google AI Studio](https://aistudio.google.com/app/apikey)).
-4. Click **"Test Key Connection"** to verify live connectivity.
-5. Click **"Save & Apply"**!
-
-*(Alternatively, add `VITE_GEMINI_API_KEY=your_key_here` to `frontend/.env`)*
+**InterviewPrep AI** is an enterprise-grade full-stack technical interview preparation platform designed to help software engineering students and developers master technical and behavioral interviews through AI-generated questions, deterministic evaluation engines, and live LLM integration.
 
 ---
 
-## 🚀 Quick Start Guide
+## 1. System Architecture
 
-### 1. Prerequisites
-- **Node.js**: v18.0.0 or higher
-- **npm**: v9.0.0 or higher
+The application is structured into four decoupled, production-grade micro-tiers:
 
-### 2. Run the Application
-From the project root:
+```
+InterviewPrep-AI/
+│
+├── frontend/               # React 18 + Vite + Tailwind CSS + Lucide + Recharts
+│   ├── src/
+│   │   ├── components/     # TopNavbar, Sidebar, AIModelModal, ProtectedRoute
+│   │   ├── context/        # AuthContext, InterviewContext
+│   │   ├── data/           # Real-world technical question banks
+│   │   ├── pages/          # Dashboard, StartInterview, InterviewSession, Evaluation, History, Performance, Profile
+│   │   ├── services/       # api.js, authService.js, interviewService.js, evaluationService.js, historyService.js
+│   │   └── utils/          # Rule-based deterministic evaluator engine
+│   └── package.json
+│
+├── backend/                # Java 21 + Spring Boot 3.3.5 + Spring Security + JWT + JPA
+│   ├── src/main/java/com/interviewprep/
+│   │   ├── config/         # SecurityConfig, WebClientConfig
+│   │   ├── controller/     # AuthController, InterviewController, EvaluationController, PerformanceController, HealthController
+│   │   ├── dto/            # Request/Response data transfer objects
+│   │   ├── entity/         # User, Interview, InterviewQuestion, InterviewAnswer, Evaluation
+│   │   ├── exception/      # GlobalExceptionHandler & custom exceptions
+│   │   ├── repository/     # Spring Data JPA repositories
+│   │   ├── security/       # JwtTokenProvider, JwtAuthenticationFilter, UserPrincipal, CustomUserDetailsService
+│   │   ├── service/        # AuthService, InterviewService, EvaluationService, PerformanceService, AiServiceClient
+│   │   └── InterviewPrepApplication.java
+│   ├── src/main/resources/
+│   │   ├── application.properties        # MySQL configuration
+│   │   ├── application-dev.properties    # In-memory H2 standalone dev profile
+│   │   └── db/migration/V1__initial_schema.sql # Flyway migration
+│   └── pom.xml             # Maven configuration with wrapper
+│
+├── ai-service/             # Python 3.11+ FastAPI Microservice
+│   ├── app/
+│   │   ├── config/         # Pydantic Settings & environment variables
+│   │   ├── models/         # Pydantic schemas for questions & evaluations
+│   │   ├── routes/         # /health, /api/v1/questions/generate, /api/v1/evaluation/evaluate
+│   │   ├── services/       # BaseAIProvider, MockAIProvider, GeminiAIProvider
+│   │   └── main.py         # FastAPI application entrypoint
+│   ├── tests/              # Pytest test suite (6 passing test cases)
+│   ├── requirements.txt
+│   └── .env.example
+│
+├── database/               # MySQL 8+ Database Schema & Migration Guides
+│   ├── schema.sql          # Full DDL with indexes and demo user seed
+│   └── README.md           # Database setup guide
+│
+├── .gitignore
+└── README.md
+```
+
+---
+
+## 2. End-to-End Workflow
+
+```mermaid
+sequenceDiagram
+    autonumber
+    actor Student as Student / User
+    participant Frontend as React / Vite (Port 5173)
+    participant Backend as Spring Boot 3 (Port 8080)
+    participant AI as FastAPI Service (Port 8000)
+    participant DB as MySQL 8 (Port 3306)
+
+    Student->>Frontend: Open app & Login (demo@interviewprep.ai)
+    Frontend->>Backend: POST /api/auth/login
+    Backend->>DB: Validate BCrypt password in users table
+    Backend-->>Frontend: Return JWT Access Token + User Profile
+    
+    Student->>Frontend: Configure Interview (Java, Intermediate, 5 questions)
+    Frontend->>Backend: POST /api/interviews (Bearer JWT)
+    Backend->>AI: POST /api/v1/questions/generate
+    AI-->>Backend: Return structured questions, topics, expected concepts
+    Backend->>DB: Persist Interview & InterviewQuestions
+    Backend-->>Frontend: Return Interview Session & Question List
+
+    loop For Each Question
+        Student->>Frontend: Type technical answer & Navigate Next
+        Frontend->>Backend: POST /api/interviews/{id}/submit
+        Backend->>DB: Upsert InterviewAnswer
+    end
+
+    Student->>Frontend: Finish & Submit Interview
+    Frontend->>Backend: POST /api/interviews/{id}/complete
+    Backend->>AI: POST /api/v1/evaluation/evaluate (for each answer)
+    AI-->>Backend: Return score (0-100), metrics, strengths, model answers
+    Backend->>DB: Persist Evaluations & Update totalScore
+    Backend-->>Frontend: Return Complete Evaluation Breakdown
+    Frontend->>Student: Display scorecard, radar charts, model answers
+```
+
+---
+
+## 3. Technology Stack
+
+| Layer | Technology | Version | Purpose |
+| :--- | :--- | :--- | :--- |
+| **Frontend** | React + Vite | 18.3 / 6.4 | SPA UI with hot module reloading |
+| **Styling** | Tailwind CSS | 3.4.17 | SaaS-grade responsive dark navy theme |
+| **Icons & Charts**| Lucide React & Recharts | Latest | Dashboard metrics & trend visualizations |
+| **HTTP Client** | Axios | 1.7.9 | Request interceptors with JWT authentication |
+| **Backend** | Java OpenJDK | 21 | Modern high-performance Java runtime |
+| **Framework** | Spring Boot | 3.3.5 | Production REST API & dependency injection |
+| **Security** | Spring Security + JJWT | 6.3 / 0.12.6 | Stateless JWT authorization & BCrypt hashing |
+| **Database ORM**| Spring Data JPA / Hibernate | 6.5 | Object-relational mapping |
+| **Database** | MySQL Server | 8.0+ | Persistent relational storage |
+| **Migrations** | Flyway | 10.x | Automated versioned schema migrations |
+| **AI Microservice**| Python FastAPI | 0.115+ | High-throughput asynchronous AI microservice |
+| **Validation** | Pydantic v2 | 2.10+ | Schema validation and serialization |
+| **AI Engine** | Provider Abstraction | Mock / Gemini | Transparent deterministic engine or live LLM |
+
+---
+
+## 4. Quick Start Guide
+
+### Step 1: Clone and Enter Project
 ```bash
+cd "c:\Users\ayush\OneDrive\Desktop\ai--power-platefrom - Copy"
+```
+
+### Step 2: Set Up Database (MySQL)
+Make sure MySQL is running on `localhost:3306`:
+```bash
+mysql -u root -p < database/schema.sql
+```
+*Note: If you don't have MySQL installed, you can skip this step! The backend includes a standalone dev profile (`--spring.profiles.active=dev`) that uses an in-memory H2 database automatically.*
+
+---
+
+### Step 3: Run the AI Microservice (Port 8000)
+Open a new terminal window:
+```powershell
+cd ai-service
+
+# Activate virtual environment
+.\venv\Scripts\activate
+
+# (Optional) Verify test suite
+pytest tests
+
+# Start FastAPI server
+uvicorn app.main:app --host 127.0.0.1 --port 8000 --reload
+```
+API docs will be available at: `http://localhost:8000/docs`
+
+---
+
+### Step 4: Run the Spring Boot Backend (Port 8080)
+Open a new terminal window:
+```powershell
+cd backend
+
+# Option A: Run with MySQL (Default)
+.\mvnw.cmd spring-boot:run
+
+# Option B: Run in standalone offline mode (uses in-memory H2, no MySQL required)
+.\mvnw.cmd spring-boot:run "-Dspring-boot.run.profiles=dev"
+```
+The backend will start on: `http://localhost:8080`  
+Health check: `http://localhost:8080/api/health`
+
+---
+
+### Step 5: Run the Frontend (Port 5173)
+Open a new terminal window:
+```powershell
+cd frontend
+
+# Start the Vite development server
 npm run dev
 ```
-*(Or inside the `frontend/` directory, run `npm run dev`)*
-
-Open your browser at:
-```
-http://localhost:5173
-```
-
-### 3. Build for Production
-```bash
-npm run build
-```
-Creates an optimized, minified production build in `frontend/dist/`.
+Open your browser and navigate to: **`http://localhost:5173`**
 
 ---
 
-## 🛠️ Technology Stack
-- **Frontend Framework**: React 18 + Vite 6
-- **Live AI Models**: Google Gemini API (`gemini-1.5-flash`, `gemini-2.0-flash`, `gemini-1.5-pro`)
-- **Routing**: React Router DOM v6 (Public, Protected, and 404 Wildcard routes)
-- **Styling**: Tailwind CSS 3 (Deep navy & professional blue SaaS palette, responsive design)
-- **Icons**: Lucide React
-- **Analytics & Data Visualizations**: Recharts (Responsive AreaChart & BarChart with interactive tooltips)
-- **Data Persistence**: LocalStorage (Persisting user profile, authentication state, API keys, and completed interview records)
+## 5. Demo Credentials
+
+The database and local store come pre-seeded with a demo user:
+
+- **Email**: `demo@interviewprep.ai`
+- **Username**: `demouser`
+- **Password**: `DemoPass123!` *(or `password123`)*
+- **Target Role**: Full Stack Developer / Software Engineer
+
+You can also click the **"Quick Demo Access"** button on the Login page to instantly authenticate.
 
 ---
 
-## 📱 Application Modules & Features
+## 6. API Reference
 
-### 1. 🔐 Authentication System (`/login`, `/signup`)
-- **Sign In / Login Page**: Form validation, password visibility toggle, error notifications, tabbed switcher to sign up.
-- **One-Click Demo Access**: Instantly fills credentials or logs in as the pre-configured demo user (`demo@interviewprep.ai`).
-- **Signup Page**: Full name, email format validation, password length and confirmation checks, target role and experience tier.
-- **Session Persistence**: User authentication state and accounts persist via `localStorage`.
-- **Logout**: Clears active session and securely redirects to `/login`.
+### A. Python AI Microservice (`http://localhost:8000`)
+- `GET /health` – Microservice operational status, active provider, and uptime.
+- `POST /api/v1/questions/generate` – Generates structured technical questions based on technology and difficulty.
+- `POST /api/v1/evaluation/evaluate` – Scores student answers (0-100) on correctness, relevance, and completeness with strengths and model answers.
 
-### 2. 📊 Executive Dashboard (`/`)
-- **Personalized Greeting**: Dynamic welcome banner greeting the user by name with an SVG AI coach illustration.
-- **Real-Time KPI Cards**: Calculated dynamically from LocalStorage: Total Interviews Completed, Overall Average Score, Best Score Achieved, and Active Streak.
-- **Quick-Launch Interview Form**: Start an interview directly from the dashboard by choosing Technology, Difficulty, Question Count, and Type.
-- **Live AI Model Status**: Displays whether the live Gemini model or deterministic engine is active.
-- **Recent Activity Feed**: Dynamically lists recent completed interviews with scores, dates, and direct links to view detailed evaluation reports.
-- **Study Hub Quick Links**: Direct shortcuts to DSA practice, interview tips, and mock tests.
+### B. Spring Boot Backend (`http://localhost:8080`)
+- `POST /api/auth/register` – Register a new user account.
+- `POST /api/auth/login` – Authenticate user and receive JWT bearer token.
+- `GET /api/auth/me` – Retrieve current authenticated user profile.
+- `PUT /api/auth/profile` – Update user profile.
+- `POST /api/interviews` – Create an interview session (calls AI microservice).
+- `GET /api/interviews` – List all user interviews.
+- `GET /api/interviews/{id}` – Get interview details and question list.
+- `POST /api/interviews/{id}/submit` – Submit an answer to a question.
+- `POST /api/interviews/{id}/complete` – Complete interview and evaluate all answers.
+- `GET /api/interviews/{id}/results` – Get full score breakdown and feedback.
+- `DELETE /api/interviews/{id}` – Delete an interview session.
+- `GET /api/performance/summary` – High-level metrics for dashboard cards.
+- `GET /api/performance/analytics` – Timeline trends and topic strengths.
 
-### 3. ⚙️ Interview Setup (`/start-interview`)
-- **5 Target Technologies**: Java, Python, JavaScript, React, and SQL.
-- **3 Difficulty Tiers**: Beginner (Foundations), Intermediate (Mechanisms & Trade-offs), and Advanced (Architecture & Scalability).
-- **Question Counts**: 5 Questions (Express ~15 min), 10 Questions (Standard ~30 min), 15 Questions (Deep-Dive ~45 min).
-- **Interview Types**: Technical, HR / Behavioral (STAR method), and Mixed.
-- **AI Engine Selector**: Displays active engine and provides one-click button to configure Live Gemini API Key.
+---
 
-### 4. 📝 Focus Interview Session (`/interview-session`)
-- **Single Question Focus**: Displays one question at a time to replicate actual interview conditions.
-- **Interactive Hints**: Collapsible tips and guiding questions for each topic.
-- **Rich Answer Workspace**: Clean typography with live word counter and character counter.
-- **Draft Auto-Saving**: Candidate answers are automatically preserved across questions.
-- **Session Timer**: Live MM:SS timer tracking active elapsed time.
-- **Question Progress Indicator**: Progress bar and interactive question selector pills (color-coded for current, answered, and unanswered).
-- **Finish Confirmation Modal**: Audits answered vs unanswered questions and shows an evaluation simulation screen before results.
+## 7. Dual-Mode Resilience Architecture
 
-### 5. 🧠 AI Evaluation Engine (`/evaluation`)
-- **Live Generative AI Assessment**: Critiques answers using Google Gemini LLM with tailored feedback.
-- **Evaluates 4 Pillars**:
-  1. **Answer Relevance** (0-25 pts): Topic term alignment, problem matching.
-  2. **Keyword Coverage** (0-25 pts): Verification of key domain keywords and technical concepts.
-  3. **Answer Completeness & Depth** (0-25 pts): Word count, structural depth, and elaboration.
-  4. **Quality & Structure** (0-25 pts): Analytical reasoning, examples, trade-offs, and clarity.
-- **Evaluation Scorecard**:
-  - Overall Score out of 100 with circular score gauge.
-  - Placement Readiness Grade ("Strong Hire", "Hire", "Needs Practice").
-  - 4-bar metric breakdown for Relevance, Keywords, Completeness, and Quality.
-  - Highlighted Strengths and Areas for Improvement.
-- **Question-by-Question Accordion**: Candidate's submitted response, individual question score out of 100 with category breakdown, keyword coverage analysis (matched vs missed), evaluator feedback, and a complete **Sample Ideal Model Answer**.
-- **Run Live Eval Button**: Allows re-evaluating any session with Live Gemini AI in 1 click.
-- **Export & Print**: One-click summary print/export.
-
-### 6. 📜 Interview History (`/history`)
-- **Complete Log**: Persisted in LocalStorage across browser refreshes.
-- **Filtering & Search**: Filter by technology, difficulty, or search by topic.
-- **Model Tag**: Shows whether the attempt was evaluated by Live Gemini AI or the Prototype Engine.
-- **View Report & Delete Record**: Inspect past results or delete individual records with confirmation modal.
-
-### 7. 📈 Performance Analytics (`/performance`)
-- **Score Trend AreaChart (Recharts)**: Visualizes score progression chronologically across all completed mock sessions.
-- **Technology Performance BarChart (Recharts)**: Compares average scores across Java, Python, JavaScript, React, and SQL.
-- **Strong Topics (80%+) & Weak Topics (<75%)**: Identified conceptual gaps paired with actionable study recommendations.
-
-### 8. 👤 Candidate Profile & Settings (`/profile`, `/settings`)
-- **Profile Management**: View and edit Name, Email, Target Role, Experience Tier, College, Degree, Grad Year, Bio, and Preferred Stacks.
-- **AI Settings Page**: Connect, test, and save Google Gemini API keys and switch between Gemini Flash and Pro models.
+The frontend is architected with dual-mode resilience:
+1. **Full-Stack Live Mode**: When the Spring Boot backend and FastAPI services are running, all requests are persisted to MySQL with JWT token authentication.
+2. **Offline / Standalone Mode**: If the backend is temporarily offline, the frontend seamlessly falls back to LocalStorage and the internal deterministic rule-based evaluator, ensuring students can always practice without interruption.

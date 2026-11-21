@@ -1,0 +1,67 @@
+services:
+  # 1. Python FastAPI AI Service
+  - type: web
+    name: interviewprep-ai-service
+    env: python
+    region: oregon
+    plan: free
+    rootDir: ai-service
+    buildCommand: pip install -r requirements.txt
+    startCommand: uvicorn app.main:app --host 0.0.0.0 --port $PORT
+    healthCheckPath: /health
+    envVars:
+      - key: APP_NAME
+        value: InterviewPrep AI Microservice
+      - key: AI_PROVIDER
+        value: mock
+      - key: DEMO_MODE
+        value: "true"
+      - key: GEMINI_API_KEY
+        sync: false
+
+  # 2. Spring Boot 3 Backend
+  - type: web
+    name: interviewprep-backend
+    env: docker
+    region: oregon
+    plan: free
+    rootDir: backend
+    dockerfilePath: Dockerfile
+    healthCheckPath: /api/health
+    envVars:
+      - key: DB_HOST
+        fromDatabase:
+          name: interviewprep-mysql
+          property: host
+      - key: DB_PORT
+        fromDatabase:
+          name: interviewprep-mysql
+          property: port
+      - key: DB_NAME
+        fromDatabase:
+          name: interviewprep-mysql
+          property: database
+      - key: DB_USER
+        fromDatabase:
+          name: interviewprep-mysql
+          property: user
+      - key: DB_PASSWORD
+        fromDatabase:
+          name: interviewprep-mysql
+          property: password
+      - key: JWT_SECRET
+        generateValue: true
+      - key: JWT_EXPIRATION_MS
+        value: 86400000
+      - key: AI_SERVICE_URL
+        fromService:
+          type: web
+          name: interviewprep-ai-service
+          property: host
+
+databases:
+  - name: interviewprep-mysql
+    region: oregon
+    plan: free
+    databaseName: interviewprep_ai
+    user: interview_user

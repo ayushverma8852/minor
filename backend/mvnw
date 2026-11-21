@@ -1,0 +1,23 @@
+#!/bin/sh
+# Maven wrapper bash script
+set -e
+MAVEN_DIR="$HOME/.m2/wrapper/dists/apache-maven-3.9.9"
+MAVEN_EXE="$MAVEN_DIR/apache-maven-3.9.9/bin/mvn"
+
+if command -v mvn >/dev/null 2>&1; then
+    exec mvn "$@"
+fi
+
+if [ -f "$MAVEN_EXE" ]; then
+    exec "$MAVEN_EXE" "$@"
+fi
+
+mkdir -p "$MAVEN_DIR"
+ZIP="$MAVEN_DIR/apache-maven-3.9.9-bin.zip"
+if [ ! -f "$ZIP" ]; then
+    echo "Downloading Maven 3.9.9..."
+    curl -fsSL https://repo.maven.apache.org/maven2/org/apache/maven/apache-maven/3.9.9/apache-maven-3.9.9-bin.zip -o "$ZIP"
+    unzip -q "$ZIP" -d "$MAVEN_DIR"
+fi
+
+exec "$MAVEN_EXE" "$@"

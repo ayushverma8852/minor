@@ -70,7 +70,7 @@ export default function Profile() {
   const totalInterviews = history.length;
   const avgScore = totalInterviews > 0
     ? Math.round(history.reduce((a, b) => a + (b.score || b.overallScore || 0), 0) / totalInterviews)
-    : 84;
+    : 0;
 
   return (
     <div className="space-y-8 animate-in fade-in duration-300">

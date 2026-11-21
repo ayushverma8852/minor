@@ -30,14 +30,27 @@ export default function Dashboard() {
   const { user } = useAuth();
   const { history, startInterview, loadEvaluation } = useInterview();
 
-  // Dynamic metrics from actual LocalStorage history
+  // Dynamic metrics from actual interview history
   const totalInterviews = history.length;
   const scores = history.map((h) => h.score || h.overallScore || 0);
   const avgScore =
     totalInterviews > 0
       ? Math.round(scores.reduce((a, b) => a + b, 0) / totalInterviews)
-      : 84;
-  const bestScore = totalInterviews > 0 ? Math.max(...scores) : 90;
+      : 0;
+  const bestScore = totalInterviews > 0 ? Math.max(...scores) : 0;
+  const activeDays = totalInterviews > 0 ? Math.min(totalInterviews, 5) : 0;
+
+  // Dynamic Score Progression for Dashboard chart (last 5 completed interviews)
+  const recentSessions = [...history].reverse().slice(-5);
+  const chartPoints = recentSessions.map((item, idx) => {
+    const totalPoints = recentSessions.length;
+    const x = totalPoints === 1 ? 175 : 60 + idx * (235 / (totalPoints - 1));
+    const scoreVal = item.score || item.overallScore || 0;
+    const y = 140 - (Math.max(0, Math.min(100, scoreVal)) / 100) * 120;
+    const label = item.technology ? item.technology.slice(0, 4) : `S${idx + 1}`;
+    return { x, y, score: scoreVal, label, tech: item.technology };
+  });
+  const polylinePoints = chartPoints.map((p) => `${Math.round(p.x)},${Math.round(p.y)}`).join(' ');
 
   // Quick Start Form state
   const [tech, setTech] = useState('Java');
@@ -178,7 +191,9 @@ export default function Dashboard() {
           </div>
           <div>
             <div className="text-xs text-slate-500 font-medium">Active Streak</div>
-            <div className="text-2xl font-bold text-slate-900 mt-0.5">5 Days 🔥</div>
+            <div className="text-2xl font-bold text-slate-900 mt-0.5">
+              {totalInterviews > 0 ? `${activeDays} Day${activeDays > 1 ? 's' : ''} 🔥` : '0 Days'}
+            </div>
           </div>
         </div>
       </div>
@@ -343,50 +358,72 @@ export default function Dashboard() {
             </div>
 
             {/* Line chart visualization */}
-            <div className="mt-4 relative h-48 w-full flex items-center justify-center">
-              <svg className="w-full h-full overflow-visible" viewBox="0 0 320 160">
-                <line x1="40" y1="20" x2="310" y2="20" stroke="#f1f5f9" strokeWidth="1" strokeDasharray="3 3" />
-                <line x1="40" y1="50" x2="310" y2="50" stroke="#f1f5f9" strokeWidth="1" strokeDasharray="3 3" />
-                <line x1="40" y1="80" x2="310" y2="80" stroke="#f1f5f9" strokeWidth="1" strokeDasharray="3 3" />
-                <line x1="40" y1="110" x2="310" y2="110" stroke="#f1f5f9" strokeWidth="1" strokeDasharray="3 3" />
-                <line x1="40" y1="140" x2="310" y2="140" stroke="#e2e8f0" strokeWidth="1" />
+            {recentSessions.length === 0 ? (
+              <div className="mt-4 h-48 w-full flex flex-col items-center justify-center text-center p-4 border border-dashed border-slate-200 rounded-2xl bg-slate-50/50">
+                <div className="w-10 h-10 rounded-full bg-blue-50 text-blue-600 flex items-center justify-center mb-2">
+                  <TrendingUp className="w-5 h-5" />
+                </div>
+                <div className="text-xs font-semibold text-slate-800">No interview sessions completed yet</div>
+                <div className="text-[11px] text-slate-400 mt-0.5 max-w-[220px]">
+                  Complete your first mock interview to track your score trajectory over time.
+                </div>
+              </div>
+            ) : (
+              <div className="mt-4 relative h-48 w-full flex items-center justify-center">
+                <svg className="w-full h-full overflow-visible" viewBox="0 0 320 160">
+                  <line x1="40" y1="20" x2="310" y2="20" stroke="#f1f5f9" strokeWidth="1" strokeDasharray="3 3" />
+                  <line x1="40" y1="50" x2="310" y2="50" stroke="#f1f5f9" strokeWidth="1" strokeDasharray="3 3" />
+                  <line x1="40" y1="80" x2="310" y2="80" stroke="#f1f5f9" strokeWidth="1" strokeDasharray="3 3" />
+                  <line x1="40" y1="110" x2="310" y2="110" stroke="#f1f5f9" strokeWidth="1" strokeDasharray="3 3" />
+                  <line x1="40" y1="140" x2="310" y2="140" stroke="#e2e8f0" strokeWidth="1" />
 
-                <text x="32" y="24" textAnchor="end" fontSize="10" fill="#94a3b8" fontWeight="500">100%</text>
-                <text x="32" y="54" textAnchor="end" fontSize="10" fill="#94a3b8" fontWeight="500">75%</text>
-                <text x="32" y="84" textAnchor="end" fontSize="10" fill="#94a3b8" fontWeight="500">50%</text>
-                <text x="32" y="114" textAnchor="end" fontSize="10" fill="#94a3b8" fontWeight="500">25%</text>
-                <text x="32" y="144" textAnchor="end" fontSize="10" fill="#94a3b8" fontWeight="500">0%</text>
+                  <text x="32" y="24" textAnchor="end" fontSize="10" fill="#94a3b8" fontWeight="500">100%</text>
+                  <text x="32" y="54" textAnchor="end" fontSize="10" fill="#94a3b8" fontWeight="500">75%</text>
+                  <text x="32" y="84" textAnchor="end" fontSize="10" fill="#94a3b8" fontWeight="500">50%</text>
+                  <text x="32" y="114" textAnchor="end" fontSize="10" fill="#94a3b8" fontWeight="500">25%</text>
+                  <text x="32" y="144" textAnchor="end" fontSize="10" fill="#94a3b8" fontWeight="500">0%</text>
 
-                <text x="60" y="156" textAnchor="middle" fontSize="10" fill="#64748b" fontWeight="500">Mon</text>
-                <text x="120" y="156" textAnchor="middle" fontSize="10" fill="#64748b" fontWeight="500">Tue</text>
-                <text x="180" y="156" textAnchor="middle" fontSize="10" fill="#64748b" fontWeight="500">Wed</text>
-                <text x="240" y="156" textAnchor="middle" fontSize="10" fill="#64748b" fontWeight="500">Thu</text>
-                <text x="295" y="156" textAnchor="middle" fontSize="10" fill="#64748b" fontWeight="500">Fri</text>
+                  {chartPoints.map((pt, idx) => (
+                    <text key={idx} x={pt.x} y="156" textAnchor="middle" fontSize="10" fill="#64748b" fontWeight="500">
+                      {pt.label}
+                    </text>
+                  ))}
 
-                <polyline
-                  fill="none"
-                  stroke="#3b82f6"
-                  strokeWidth="2.5"
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  points="60,92 120,74 180,55 240,65 295,46"
-                />
+                  {chartPoints.length > 1 && (
+                    <polyline
+                      fill="none"
+                      stroke="#3b82f6"
+                      strokeWidth="2.5"
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      points={polylinePoints}
+                    />
+                  )}
 
-                <circle cx="60" cy="92" r="3.5" fill="#3b82f6" stroke="#ffffff" strokeWidth="2" />
-                <circle cx="120" cy="74" r="3.5" fill="#3b82f6" stroke="#ffffff" strokeWidth="2" />
-                <circle cx="180" cy="55" r="3.5" fill="#3b82f6" stroke="#ffffff" strokeWidth="2" />
-                <circle cx="240" cy="65" r="3.5" fill="#3b82f6" stroke="#ffffff" strokeWidth="2" />
-                <circle cx="295" cy="46" r="4.5" fill="#2563eb" stroke="#ffffff" strokeWidth="2.5" />
+                  {chartPoints.map((pt, idx) => (
+                    <circle
+                      key={idx}
+                      cx={pt.x}
+                      cy={pt.y}
+                      r={idx === chartPoints.length - 1 ? 4.5 : 3.5}
+                      fill={idx === chartPoints.length - 1 ? '#2563eb' : '#3b82f6'}
+                      stroke="#ffffff"
+                      strokeWidth={idx === chartPoints.length - 1 ? 2.5 : 2}
+                    />
+                  ))}
 
-                <g transform="translate(275, 12)">
-                  <rect x="0" y="0" width="40" height="20" rx="6" fill="#2563eb" />
-                  <text x="20" y="14" textAnchor="middle" fontSize="11" fill="#ffffff" fontWeight="bold">
-                    {avgScore}%
-                  </text>
-                  <polygon points="17,20 23,20 20,24" fill="#2563eb" />
-                </g>
-              </svg>
-            </div>
+                  {chartPoints.length > 0 && (
+                    <g transform={`translate(${Math.max(40, Math.min(270, chartPoints[chartPoints.length - 1].x - 20))}, ${Math.max(4, chartPoints[chartPoints.length - 1].y - 28)})`}>
+                      <rect x="0" y="0" width="40" height="20" rx="6" fill="#2563eb" />
+                      <text x="20" y="14" textAnchor="middle" fontSize="11" fill="#ffffff" fontWeight="bold">
+                        {chartPoints[chartPoints.length - 1].score}%
+                      </text>
+                      <polygon points="17,20 23,20 20,24" fill="#2563eb" />
+                    </g>
+                  )}
+                </svg>
+              </div>
+            )}
           </div>
         </div>
       </div>
