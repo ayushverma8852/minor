@@ -25,6 +25,19 @@ import {
 import { useAuth } from '../../context/AuthContext';
 import { useInterview } from '../../context/InterviewContext';
 
+// FastAPI AI service URL (set VITE_AI_SERVICE_URL in frontend/.env to override)
+const AI_SERVICE_URL = import.meta.env.VITE_AI_SERVICE_URL || 'http://localhost:8000';
+
+// Live Quiz: 5 questions, each one harder than the last
+const TOTAL_LIVE_QUESTIONS = 5;
+const LIVE_LEVELS = [
+  { label: 'Beginner', style: 'bg-emerald-50 text-emerald-700 border-emerald-200' },
+  { label: 'Easy', style: 'bg-sky-50 text-sky-700 border-sky-200' },
+  { label: 'Intermediate', style: 'bg-amber-50 text-amber-700 border-amber-200' },
+  { label: 'Advanced', style: 'bg-orange-50 text-orange-700 border-orange-200' },
+  { label: 'Expert', style: 'bg-red-50 text-red-700 border-red-200' }
+];
+
 export default function Dashboard() {
   const navigate = useNavigate();
   const { user } = useAuth();
@@ -58,6 +71,13 @@ export default function Dashboard() {
   const [questionCount, setQuestionCount] = useState(5);
   const [interviewType, setInterviewType] = useState('Technical');
 
+  // Live Quiz state
+  const [liveTopic, setLiveTopic] = useState('');
+  const [liveQuestions, setLiveQuestions] = useState([]);
+  const [liveLoading, setLiveLoading] = useState(false);
+  const [liveError, setLiveError] = useState('');
+  const [liveQuizTopic, setLiveQuizTopic] = useState('');
+
   const handleStartInterview = (e) => {
     e.preventDefault();
     startInterview({
@@ -72,6 +92,92 @@ export default function Dashboard() {
   const handleViewReport = (item) => {
     loadEvaluation(item);
     navigate('/evaluation');
+  };
+
+  const requestLiveQuestion = async (topic, askedSoFar) => {
+    setLiveLoading(true);
+    setLiveError('');
+
+    try {
+      const response = await fetch(`${AI_SERVICE_URL}/api/v1/live-quiz/ask`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          topic,
+          previous_questions: askedSoFar.map((q) => q.question),
+          question_number: askedSoFar.length + 1,
+          total_questions: TOTAL_LIVE_QUESTIONS
+        })
+      });
+
+      const data = await response.json();
+      if (!response.ok) {
+        throw new Error(data.detail || 'Failed to generate question');
+      }
+
+      setLiveQuestions([
+        ...askedSoFar,
+        {
+          id: Date.now(),
+          question: data.question,
+          options: data.options,
+          correctIndex: data.correct_index,
+          explanation: data.explanation,
+          selected: null
+        }
+      ]);
+    } catch (err) {
+      setLiveError(
+        err.message === 'Failed to fetch'
+          ? 'Cannot reach the AI service. Check that it is running on port 8000.'
+          : err.message
+      );
+    } finally {
+      setLiveLoading(false);
+    }
+  };
+
+  const handleStartQuiz = (e) => {
+    e.preventDefault();
+    const topic = liveTopic.trim();
+    if (!topic || liveLoading) return;
+    setLiveQuizTopic(topic);
+    setLiveQuestions([]);
+    requestLiveQuestion(topic, []);
+  };
+
+  const handleNextQuestion = () => {
+    if (liveLoading) return;
+    requestLiveQuestion(liveQuizTopic, liveQuestions);
+  };
+
+  const handleSelectOption = (id, optionIndex) => {
+    setLiveQuestions((prev) =>
+      prev.map((q) =>
+        q.id === id && q.selected === null ? { ...q, selected: optionIndex } : q
+      )
+    );
+  };
+
+  const handleQuitQuiz = () => {
+    setLiveQuestions([]);
+    setLiveQuizTopic('');
+    setLiveError('');
+  };
+
+  // Live Quiz derived values (score updates as soon as an option is picked)
+  const quizStarted = liveQuestions.length > 0;
+  const currentQuestion = quizStarted ? liveQuestions[liveQuestions.length - 1] : null;
+  const currentAnswered = currentQuestion ? currentQuestion.selected !== null : false;
+  const liveAnswered = liveQuestions.filter((q) => q.selected !== null).length;
+  const liveCorrect = liveQuestions.filter((q) => q.selected === q.correctIndex).length;
+  const quizFinished = liveQuestions.length === TOTAL_LIVE_QUESTIONS && currentAnswered;
+  const currentLevel = LIVE_LEVELS[Math.max(0, liveQuestions.length - 1)];
+
+  const getQuizVerdict = () => {
+    if (liveCorrect === TOTAL_LIVE_QUESTIONS) return 'Perfect score. You are interview ready on this topic.';
+    if (liveCorrect >= 3) return 'Good job. A little more practice on the harder questions and you are there.';
+    return 'Keep practicing. Review the explanations and try the quiz again.';
   };
 
   const recentHistory = history.slice(0, 4);
@@ -426,6 +532,205 @@ export default function Dashboard() {
             )}
           </div>
         </div>
+      </div>
+
+      {/* Live Quiz */}
+      <div className="bg-white rounded-3xl p-6 border border-slate-100 shadow-xs">
+        <div className="flex items-center justify-between gap-2">
+          <div className="flex items-center gap-2">
+            <Sparkles className="w-5 h-5 text-blue-600" />
+            <h3 className="text-base font-bold text-slate-900">Live Quiz</h3>
+          </div>
+          {quizStarted && (
+            <button
+              type="button"
+              onClick={handleQuitQuiz}
+              className="text-xs font-semibold text-slate-500 hover:text-red-600 transition-colors cursor-pointer"
+            >
+              Quit quiz
+            </button>
+          )}
+        </div>
+
+        {!quizStarted && (
+          <>
+            <p className="text-xs text-slate-500 mt-1">
+              Pick a topic for a {TOTAL_LIVE_QUESTIONS}-question quiz. It starts easy and gets harder with every question.
+            </p>
+
+            <form
+              onSubmit={handleStartQuiz}
+              className="mt-4 flex flex-col sm:flex-row gap-3"
+            >
+              <input
+                type="text"
+                value={liveTopic}
+                onChange={(e) => setLiveTopic(e.target.value)}
+                placeholder="e.g. Python decorators, React hooks, SQL joins"
+                className="flex-1 px-3 py-2.5 rounded-xl border border-slate-200 text-sm text-slate-800 focus:outline-none focus:border-blue-400"
+              />
+              <button
+                type="submit"
+                disabled={liveLoading || !liveTopic.trim()}
+                className="px-5 py-2.5 rounded-xl bg-[#1d68f2] hover:bg-[#1a5cd6] text-white font-semibold text-sm disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer transition-all"
+              >
+                {liveLoading ? 'Generating...' : 'Start Quiz'}
+              </button>
+            </form>
+          </>
+        )}
+
+        {liveError && (
+          <div className="mt-3 text-xs text-red-600 bg-red-50 border border-red-100 rounded-xl p-3">
+            {liveError}
+          </div>
+        )}
+
+        {quizStarted && (
+          <div className="mt-4">
+            {/* Progress + live score */}
+            <div className="flex flex-wrap items-center justify-between gap-2">
+              <div className="flex items-center gap-2 text-xs font-semibold text-slate-700">
+                <span className="px-2.5 py-1 rounded-full bg-slate-100 border border-slate-200">
+                  {liveQuizTopic}
+                </span>
+                <span>
+                  Question {liveQuestions.length} of {TOTAL_LIVE_QUESTIONS}
+                </span>
+              </div>
+              <div className="px-3 py-1.5 rounded-full bg-blue-50 border border-blue-100 text-xs font-semibold text-blue-800">
+                Score: {liveCorrect} / {liveAnswered}
+              </div>
+            </div>
+
+            <div className="mt-3 h-1.5 w-full rounded-full bg-slate-100 overflow-hidden">
+              <div
+                className="h-full rounded-full bg-[#2563eb] transition-all duration-300"
+                style={{ width: `${(liveAnswered / TOTAL_LIVE_QUESTIONS) * 100}%` }}
+              />
+            </div>
+
+            {/* Current question */}
+            <div className="mt-4 p-4 rounded-2xl border border-slate-100 bg-slate-50/60">
+              <div className="flex items-start justify-between gap-3">
+                <div className="text-sm font-semibold text-slate-900">
+                  <span className="text-xs font-bold text-blue-600 mr-2">
+                    Q{liveQuestions.length}
+                  </span>
+                  {currentQuestion.question}
+                </div>
+                <span
+                  className={`shrink-0 px-2.5 py-0.5 rounded-full border text-[11px] font-semibold ${currentLevel.style}`}
+                >
+                  {currentLevel.label}
+                </span>
+              </div>
+
+              <div className="mt-3 grid grid-cols-1 sm:grid-cols-2 gap-2">
+                {currentQuestion.options.map((opt, optIdx) => {
+                  let style =
+                    'border-slate-200 bg-white hover:border-blue-400 hover:bg-blue-50/40 cursor-pointer';
+
+                  if (currentAnswered) {
+                    if (optIdx === currentQuestion.correctIndex) {
+                      style = 'border-emerald-400 bg-emerald-50 text-emerald-900 cursor-default';
+                    } else if (optIdx === currentQuestion.selected) {
+                      style = 'border-red-400 bg-red-50 text-red-900 cursor-default';
+                    } else {
+                      style = 'border-slate-200 bg-white opacity-60 cursor-default';
+                    }
+                  }
+
+                  return (
+                    <button
+                      key={optIdx}
+                      type="button"
+                      disabled={currentAnswered}
+                      onClick={() => handleSelectOption(currentQuestion.id, optIdx)}
+                      className={`text-left px-3 py-2.5 rounded-xl border text-sm text-slate-800 transition-colors ${style}`}
+                    >
+                      <span className="font-bold mr-2">
+                        {String.fromCharCode(65 + optIdx)}.
+                      </span>
+                      {opt}
+                    </button>
+                  );
+                })}
+              </div>
+
+              {currentAnswered && (
+                <div
+                  className={`mt-3 text-xs rounded-xl p-3 border ${
+                    currentQuestion.selected === currentQuestion.correctIndex
+                      ? 'bg-emerald-50 border-emerald-100 text-emerald-900'
+                      : 'bg-red-50 border-red-100 text-red-900'
+                  }`}
+                >
+                  <div className="font-bold">
+                    {currentQuestion.selected === currentQuestion.correctIndex
+                      ? 'Correct!'
+                      : `Not quite. The correct answer is ${String.fromCharCode(65 + currentQuestion.correctIndex)}.`}
+                  </div>
+                  {currentQuestion.explanation && (
+                    <div className="mt-1">{currentQuestion.explanation}</div>
+                  )}
+                </div>
+              )}
+
+              {currentAnswered && !quizFinished && (
+                <div className="mt-3 flex justify-end">
+                  <button
+                    type="button"
+                    onClick={handleNextQuestion}
+                    disabled={liveLoading}
+                    className="px-5 py-2 rounded-xl bg-[#1d68f2] hover:bg-[#1a5cd6] text-white font-semibold text-sm disabled:opacity-60 disabled:cursor-not-allowed cursor-pointer flex items-center gap-2 transition-all"
+                  >
+                    <span>{liveLoading ? 'Generating...' : 'Next question'}</span>
+                    {!liveLoading && <ArrowRight className="w-4 h-4" />}
+                  </button>
+                </div>
+              )}
+            </div>
+
+            {/* Final result */}
+            {quizFinished && (
+              <div className="mt-4 p-5 rounded-2xl border border-blue-100 bg-blue-50/60 text-center">
+                <Trophy className="w-8 h-8 text-[#8b5cf6] mx-auto" />
+                <div className="mt-2 text-lg font-bold text-slate-900">
+                  You scored {liveCorrect} out of {TOTAL_LIVE_QUESTIONS}
+                </div>
+                <p className="mt-1 text-xs text-slate-600">{getQuizVerdict()}</p>
+
+                <div className="mt-3 flex items-center justify-center gap-2">
+                  {liveQuestions.map((q, idx) => {
+                    const right = q.selected === q.correctIndex;
+                    return (
+                      <div
+                        key={q.id}
+                        className={`w-9 h-9 rounded-xl border flex items-center justify-center text-xs font-bold ${
+                          right
+                            ? 'bg-emerald-50 border-emerald-300 text-emerald-700'
+                            : 'bg-red-50 border-red-300 text-red-700'
+                        }`}
+                        title={LIVE_LEVELS[idx].label}
+                      >
+                        {idx + 1}
+                      </div>
+                    );
+                  })}
+                </div>
+
+                <button
+                  type="button"
+                  onClick={handleQuitQuiz}
+                  className="mt-4 px-5 py-2 rounded-xl bg-[#1d68f2] hover:bg-[#1a5cd6] text-white font-semibold text-sm cursor-pointer transition-all"
+                >
+                  Start a new quiz
+                </button>
+              </div>
+            )}
+          </div>
+        )}
       </div>
 
       {/* 4. Bottom Row: Quick Links (Left) & Real Recent Activity (Right) */}

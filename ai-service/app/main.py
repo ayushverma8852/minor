@@ -45,8 +45,8 @@ app.add_middleware(
 app.include_router(health_router)
 app.include_router(questions_router)
 app.include_router(evaluation_router)
-
-
+from app.routes.live_quiz import router as live_quiz_router
+app.include_router(live_quiz_router)
 @app.get("/")
 async def root():
     return {
